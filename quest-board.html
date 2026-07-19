@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>팔도 퀘스트 보드</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri@latest/dist/galmuri.css">
+<style>
+  :root{
+    --ink:#181008;
+    --hanji:#eddcb1;
+    --hanji-dim:#c9b689;
+    --herb:#7fa85a;
+    --gold:#e0a63e;
+    --ember:#d4593f;
+    --jp:#e8a0b4;          /* 일본어 표시색 */
+    --cn:#e0b06a;          /* 중국어 표시색 */
+    --panel:#241a10;
+    --panel2:#2f2317;
+    --px:4px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html{image-rendering:pixelated}
+  body{
+    background:var(--ink);
+    color:var(--hanji);
+    font-family:'Galmuri11','Galmuri9',monospace;
+    font-size:15px;
+    line-height:1.6;
+    min-height:100vh;
+    padding:16px 12px 60px;
+    background-image:
+      repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,0,0,.18) 2px 4px);
+  }
+  .wrap{max-width:480px;margin:0 auto}
+
+  .panel{
+    background:var(--panel);
+    border:var(--px) solid var(--hanji);
+    box-shadow:0 var(--px) 0 #000, inset 0 0 0 2px #000;
+    padding:16px 12px 12px;
+    margin-bottom:22px;
+    position:relative;
+  }
+  .panel-label{
+    position:absolute;top:-13px;left:10px;
+    background:var(--ink);
+    padding:0 8px;
+    font-size:12px;color:var(--hanji-dim);
+    letter-spacing:2px;
+  }
+
+  /* ── 상태창 ── */
+  .char-row{display:flex;gap:12px;align-items:center;margin-bottom:12px}
+  .pot{width:56px;height:56px;flex:none}
+  .pot svg{width:100%;height:100%}
+  .steam{animation:steam 2.4s infinite;opacity:0}
+  .steam.s2{animation-delay:.8s}
+  .steam.s3{animation-delay:1.6s}
+  @keyframes steam{
+    0%{transform:translateY(0);opacity:0}
+    30%{opacity:.9}
+    100%{transform:translateY(-10px);opacity:0}
+  }
+  .char-info{flex:1;min-width:0}
+  .title-tag{color:var(--gold);font-size:16px}
+  .lv{font-size:13px;color:var(--hanji-dim);margin-top:2px}
+  .streak{font-size:13px;color:var(--ember);margin-top:2px}
+  .xpbar{height:18px;border:3px solid var(--hanji);background:#000;position:relative}
+  .xpfill{
+    height:100%;
+    background:repeating-linear-gradient(90deg,var(--herb) 0 8px,#6b9149 8px 16px);
+    width:0%;
+    transition:width .5s steps(10);
+  }
+  .xptext{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:11px;color:#fff;text-shadow:1px 1px 0 #000;
+  }
+  @media (prefers-reduced-motion: reduce){
+    .xpfill{transition:none}
+    .steam{animation:none;opacity:.5}
+    .bigmsg{animation:none}
+  }
+
+  /* ── 오늘의 퀘스트(문장) ── */
+  .qdate{font-size:11px;color:var(--hanji-dim);text-align:right;margin-bottom:10px}
+  .quest{
+    background:var(--panel2);
+    border:3px solid #000;
+    margin-bottom:8px;
+    position:relative;
+  }
+  .qhead{
+    display:flex;align-items:center;gap:10px;
+    padding:10px;cursor:pointer;user-select:none;
+  }
+  .pips{display:flex;gap:3px;flex:none}
+  .pip{
+    width:12px;height:12px;
+    border:2px solid var(--hanji-dim);
+    background:#000;
+  }
+  .pip.on{background:var(--herb);border-color:var(--herb)}
+  .qko{flex:1;font-size:14px;min-width:0}
+  .qcat{font-size:10px;color:var(--hanji-dim);flex:none}
+  .del{
+    display:none;flex:none;width:24px;height:24px;
+    border:3px solid var(--ember);color:var(--ember);
+    background:#000;font-family:inherit;font-size:12px;
+    cursor:pointer;line-height:1;
+  }
+  .managing .del{display:block}
+
+  .qbody{display:none;padding:0 12px 12px;border-top:2px dashed #000}
+  .quest.open .qbody{display:block}
+  .lang{margin-top:10px;font-size:13px}
+  .lang .flag{font-size:11px;letter-spacing:1px}
+  .lang.jp .flag{color:var(--jp)}
+  .lang.cn .flag{color:var(--cn)}
+  .lang .native{margin-top:2px;font-size:15px;color:var(--hanji)}
+  .lang .pron{font-size:12px;color:var(--hanji-dim)}
+  .lang .tip{font-size:11px;color:var(--gold);margin-top:3px;opacity:.9;line-height:1.5}
+  .speak{
+    font-family:inherit;font-size:10px;
+    background:#000;color:var(--hanji);
+    border:2px solid var(--hanji-dim);
+    padding:2px 7px;margin-left:8px;
+    cursor:pointer;vertical-align:middle;
+  }
+  .speak:active{background:var(--hanji-dim);color:#000}
+  .speak.playing{border-color:var(--gold);color:var(--gold)}
+  .usebtn{
+    margin-top:12px;width:100%;
+    font-family:inherit;font-size:14px;
+    background:var(--herb);color:#000;
+    border:0;box-shadow:0 3px 0 #000;
+    padding:10px;cursor:pointer;
+  }
+  .usebtn:active{transform:translateY(3px);box-shadow:none}
+  .usebtn:disabled{background:var(--hanji-dim);cursor:default}
+  .empty{text-align:center;color:var(--hanji-dim);font-size:13px;padding:20px 8px}
+
+  .float-xp{
+    position:absolute;right:12px;top:6px;
+    color:var(--gold);font-size:14px;
+    text-shadow:1px 1px 0 #000;
+    animation:floatUp 1s forwards;
+    pointer-events:none;z-index:5;
+  }
+  @keyframes floatUp{
+    0%{transform:translateY(0);opacity:1}
+    100%{transform:translateY(-28px);opacity:0}
+  }
+
+  /* ── 버튼/폼 ── */
+  .btnrow{display:flex;gap:8px;margin-top:10px}
+  .btn{
+    flex:1;font-family:inherit;font-size:13px;
+    background:var(--hanji);color:var(--ink);
+    border:0;box-shadow:0 3px 0 #000;
+    padding:10px 8px;cursor:pointer;
+  }
+  .btn:active{transform:translateY(3px);box-shadow:none}
+  .btn.ghost{background:var(--panel2);color:var(--hanji);border:2px solid var(--hanji-dim)}
+  .addform{
+    display:none;margin-top:10px;
+    border:3px solid var(--hanji-dim);
+    background:#000;padding:10px;
+  }
+  .addform.open{display:block}
+  .addform input, .addform select{
+    width:100%;
+    background:var(--panel2);
+    border:2px solid var(--hanji-dim);
+    color:var(--hanji);
+    font-family:inherit;font-size:13px;
+    padding:8px;margin-bottom:8px;
+  }
+  .addform input:focus, .addform select:focus{outline:2px solid var(--gold)}
+  .formhint{font-size:11px;color:var(--hanji-dim);margin-bottom:8px}
+
+  /* ── 문장 도감 ── */
+  .dex-stats{font-size:12px;color:var(--hanji-dim);margin-bottom:12px;text-align:right}
+  .dex-cat{margin-bottom:10px;border:3px solid #000;background:var(--panel2)}
+  .dex-cat-head{
+    display:flex;align-items:center;gap:8px;
+    padding:9px 10px;cursor:pointer;user-select:none;
+  }
+  .dex-icon{flex:none;font-size:14px}
+  .dex-name{flex:1;font-size:13px}
+  .dex-count{font-size:11px;color:var(--gold)}
+  .dex-arrow{font-size:11px;color:var(--hanji-dim)}
+  .dex-list{display:none;border-top:2px dashed #000;padding:4px 10px 10px}
+  .dex-cat.open .dex-list{display:block}
+  .dex-item{
+    padding:8px 0;border-bottom:1px solid #3a2c1c;cursor:pointer;
+  }
+  .dex-item:last-child{border-bottom:0}
+  .dex-ko{font-size:13px}
+  .dex-badge{color:var(--herb);font-size:11px;margin-left:4px}
+  .dex-detail{display:none;margin-top:4px}
+  .dex-item.open .dex-detail{display:block}
+  .dex-empty{font-size:12px;color:var(--hanji-dim);padding:8px 0}
+
+  /* ── 오버레이 ── */
+  .overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,.78);
+    display:none;align-items:center;justify-content:center;
+    flex-direction:column;gap:14px;z-index:50;text-align:center;padding:20px;
+  }
+  .overlay.show{display:flex}
+  .bigmsg{
+    font-size:26px;color:var(--gold);
+    text-shadow:2px 2px 0 #000, 4px 4px 0 var(--ember);
+    animation:blink 1s steps(2) infinite;
+  }
+  @keyframes blink{50%{opacity:.55}}
+  .submsg{font-size:14px;color:var(--hanji)}
+  .tap{font-size:11px;color:var(--hanji-dim);margin-top:10px}
+
+  footer{
+    text-align:center;font-size:10px;color:var(--hanji-dim);
+    margin-top:8px;letter-spacing:1px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- 상태창 -->
+  <div class="panel">
+    <div class="panel-label">STATUS</div>
+    <div class="char-row">
+      <div class="pot">
+        <svg viewBox="0 0 16 16" shape-rendering="crispEdges">
+          <rect class="steam" x="6" y="1" width="1" height="2" fill="#eddcb1"/>
+          <rect class="steam s2" x="8" y="0" width="1" height="2" fill="#eddcb1"/>
+          <rect class="steam s3" x="10" y="1" width="1" height="2" fill="#eddcb1"/>
+          <rect x="4" y="4" width="8" height="1" fill="#c9b689"/>
+          <rect x="3" y="5" width="10" height="1" fill="#5a4630"/>
+          <rect x="2" y="6" width="12" height="5" fill="#3a2c1c"/>
+          <rect x="3" y="7" width="10" height="3" fill="#4a3824"/>
+          <rect x="1" y="7" width="1" height="2" fill="#5a4630"/>
+          <rect x="14" y="7" width="1" height="2" fill="#5a4630"/>
+          <rect x="4" y="11" width="8" height="1" fill="#2a1e12"/>
+          <rect x="5" y="12" width="2" height="2" fill="#d4593f"/>
+          <rect x="8" y="12" width="1" height="2" fill="#e0a63e"/>
+          <rect x="10" y="12" width="1" height="2" fill="#d4593f"/>
+          <rect x="3" y="14" width="10" height="1" fill="#5a4630"/>
+        </svg>
+      </div>
+      <div class="char-info">
+        <div class="title-tag" id="charTitle">견습 약생</div>
+        <div class="lv">Lv.<span id="lvNum">1</span> · 총 <span id="totalXp">0</span> EXP</div>
+        <div class="streak" id="streakLine">🔥 연속 0일</div>
+      </div>
+    </div>
+    <div class="xpbar">
+      <div class="xpfill" id="xpFill"></div>
+      <div class="xptext" id="xpText">0 / 100</div>
+    </div>
+  </div>
+
+  <!-- 오늘의 퀘스트 = 연습할 문장 -->
+  <div class="panel" id="board">
+    <div class="panel-label" style="color:var(--gold)">오늘의 퀘스트</div>
+    <div class="qdate" id="qDate"></div>
+    <div id="questList"></div>
+    <div class="btnrow">
+      <button class="btn" id="addBtn">+ 문장 추가</button>
+      <button class="btn ghost" id="manageBtn">관리</button>
+    </div>
+    <div class="addform" id="addForm">
+      <div class="formhint">한국어 문장만 필수! 번역/발음은 Claude한테 받아서 붙여넣어요.</div>
+      <input type="text" id="inKo" maxlength="60" placeholder="한국어 문장 *">
+      <select id="inCat"></select>
+      <input type="text" id="inJp" maxlength="80" placeholder="🇯🇵 일본어">
+      <input type="text" id="inJpP" maxlength="80" placeholder="🇯🇵 발음 (한글)">
+      <input type="text" id="inCn" maxlength="80" placeholder="🇨🇳 중국어">
+      <input type="text" id="inCnP" maxlength="80" placeholder="🇨🇳 발음 (한글/병음)">
+      <button class="btn" id="saveQuest">퀘스트 등록</button>
+    </div>
+  </div>
+
+  <!-- 문장 도감 -->
+  <div class="panel">
+    <div class="panel-label" style="color:var(--herb)">문장 도감</div>
+    <div class="dex-stats" id="dexStats"></div>
+    <div id="dexList"></div>
+  </div>
+
+  <footer>PALDO QUEST BOARD ver 2.3</footer>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="bigmsg" id="bigMsg">체화 완료!</div>
+  <div class="submsg" id="subMsg"></div>
+  <div class="tap">- 화면을 누르면 닫혀요 -</div>
+</div>
+
+<script>
+const TITLES = [
+  [1,"견습 약생"],[2,"약초 견습생"],[3,"탕전 수련생"],[4,"수습 약선생"],
+  [6,"약방 지킴이"],[8,"팔도 약방장"],[10,"전설의 약선생"]
+];
+const XP_PER_LEVEL = 100;
+const XP_USE = 10;        // 문장 1회 써먹기
+const XP_MASTER = 30;     // 체화 완료 보너스
+const USES_TO_MASTER = 3;
+const KEY = "paldo-quest-board-v2";
+
+const CATS = [
+  {id:"greet", icon:"🏮", name:"인사·응대"},
+  {id:"sympt", icon:"🩺", name:"증상 묻기"},
+  {id:"effect", icon:"🌿", name:"효능 설명"},
+  {id:"dose", icon:"🥄", name:"복용법"},
+  {id:"pay", icon:"💰", name:"계산·면세"},
+  {id:"etc", icon:"📦", name:"기타"}
+];
+
+/* Claude가 문장을 새로 추가해주는 곳.
+   이미 저장된 진행 데이터가 있어도, 여기 있는 문장 중
+   없는 것만 자동으로 합쳐져요 (진행 상황 유지됨). */
+const SEED_SENTENCES = [
+  {
+    id:"s1", cat:"greet",
+    ko:"어서 오세요, 무엇을 찾으세요?",
+    jp:"いらっしゃいませ。何をお探しですか？",
+    jpP:"이랏샤이마세. 나니오 오사가시데스까?",
+    jpTip:"세게 말하는 강세 대신 높낮이! 「이」낮게→「랏샤이마세」높고 평평하게. 「나니」는 나↘니(나만 높게), 「오사가시」는 높게 유지하다 질문이니 「까」만 살짝 올리기.",
+    cn:"您好！您在找什么？",
+    cnP:"닌 하오! 닌 짜이 자오 션머? (Nín hǎo! Nín zài zhǎo shénme?)",
+    cnTip:"「닌」아래→위로 올리고, 「하오」는 내렸다 올리기. 「짜이」는 위에서 뚝 떨어뜨리고, 「자오」내렸다 올리고, 「션머」는 올렸다가 가볍게."
+  },
+  {
+    id:"s2", cat:"greet",
+    ko:"찾으시는 거 있으세요?",
+    jp:"何かお探しですか？",
+    jpP:"나니카 오사가시데스카?",
+    jpTip:"「나」만 높고 「니카」는 낮게(나↘니카). 「오사가시」는 평평-높게, 끝 「카」만 올리기. 음절마다 길이는 똑같이, 특정 음절을 세게 밀지 않기.",
+    cn:"您想找什么？",
+    cnP:"닌 시앙 자오 션메? (Nín xiǎng zhǎo shénme?)",
+    cnTip:"「닌」올리고 → 「시앙」은 뒤에 같은 성조(3성)가 와서 그냥 올리듯 발음 → 「자오」내렸다 올리기 → 「션메」올렸다가 툭."
+  },
+  {
+    id:"s3", cat:"sympt",
+    ko:"어떤 수술이나 시술 하셨어요?",
+    jp:"どんな手術などをしましたか？",
+    jpP:"돈나 슈쥬츠나도 오시마시타카?",
+    jpTip:"「돈」만 높고 「나」부터 낮게. 「슈쥬츠」는 세 음절 같은 길이로 또박또박 '슈·쥬·츠'(츠는 짧게 끊기). 「시마시타」평평하게 가다가 「카」만 올리기.",
+    cn:"做了什么手术？",
+    cnP:"조오러 션메 쇼우슈? (Zuòle shénme shǒushù?)",
+    cnTip:"「조오」는 위에서 아래로 딱 떨어뜨리고 「러」는 힘 빼기. 「션메」올리고, 「쇼우」내렸다 올리고, 마지막 「슈」는 다시 위에서 뚝!"
+  }
+];
+
+function seedToSentence(s){
+  return Object.assign({}, s, {uses:0, mastered:false, masteredAt:null});
+}
+
+const DEFAULT_STATE = {
+  sentences: SEED_SENTENCES.map(seedToSentence),
+  totalXp: 0,
+  useLog: {},   // { "2026-07-19": 2 }  하루에 써먹은 횟수 (스트릭용)
+  openCats: {}
+};
+
+let state = null;
+let managing = false;
+let streak = 0;
+
+function dkey(d){
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function todayKey(){ return dkey(new Date()); }
+
+async function loadState(){
+  try{
+    const r = await window.storage.get(KEY);
+    if(r && r.value){
+      state = JSON.parse(r.value);
+      // 새로 배포된 SEED 문장 병합 + 기존 문장 내용 갱신 (진행 상황은 그대로)
+      let merged = false;
+      for(const seed of SEED_SENTENCES){
+        const exist = state.sentences.find(s=>s.id===seed.id);
+        if(!exist){
+          state.sentences.push(seedToSentence(seed));
+          merged = true;
+        }else{
+          for(const k of ["cat","ko","jp","jpP","jpTip","cn","cnP","cnTip"]){
+            if(exist[k] !== seed[k]){ exist[k] = seed[k]; merged = true; }
+          }
+        }
+      }
+      if(merged) await saveState();
+      return;
+    }
+  }catch(e){ /* 첫 실행 */ }
+  state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+}
+async function saveState(){
+  try{ await window.storage.set(KEY, JSON.stringify(state)); }
+  catch(e){ console.error("save failed", e); }
+}
+
+function levelOf(xp){ return Math.floor(xp / XP_PER_LEVEL) + 1; }
+function titleOf(lv){
+  let t = TITLES[0][1];
+  for(const [minLv,name] of TITLES){ if(lv >= minLv) t = name; }
+  return t;
+}
+function recalcStreak(){
+  let count = 0;
+  const d = new Date();
+  if(!(state.useLog[todayKey()] > 0)){ d.setDate(d.getDate()-1); }
+  while(state.useLog[dkey(d)] > 0){
+    count++; d.setDate(d.getDate()-1);
+    if(count > 3650) break;
+  }
+  streak = count;
+}
+function catOf(id){ return CATS.find(c=>c.id===id) || CATS[CATS.length-1]; }
+
+function langBlock(s){
+  let h = "";
+  if(s.jp){
+    h += '<div class="lang jp"><div class="flag">JP ▶'+
+         '<button class="speak" data-lang="ja-JP" data-text="'+esc(s.jp)+'">🔊 듣기</button></div>'+
+         '<div class="native">'+esc(s.jp)+'</div>'+
+         (s.jpP ? '<div class="pron">'+esc(s.jpP)+'</div>' : "")+
+         (s.jpTip ? '<div class="tip">♪ '+esc(s.jpTip)+'</div>' : "")+'</div>';
+  }
+  if(s.cn){
+    h += '<div class="lang cn"><div class="flag">CN ▶'+
+         '<button class="speak" data-lang="zh-CN" data-text="'+esc(s.cn)+'">🔊 듣기</button></div>'+
+         '<div class="native">'+esc(s.cn)+'</div>'+
+         (s.cnP ? '<div class="pron">'+esc(s.cnP)+'</div>' : "")+
+         (s.cnTip ? '<div class="tip">♪ '+esc(s.cnTip)+'</div>' : "")+'</div>';
+  }
+  if(!s.jp && !s.cn){
+    h += '<div class="lang"><div class="pron">아직 번역이 없어요. Claude한테 받아서 새로 등록하거나, 이대로 한국어 감각만 먼저 익혀도 OK!</div></div>';
+  }
+  return h;
+}
+function esc(t){
+  return String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+/* ── 렌더링 ── */
+function render(){
+  const lv = levelOf(state.totalXp);
+  document.getElementById("charTitle").textContent = titleOf(lv);
+  document.getElementById("lvNum").textContent = lv;
+  document.getElementById("totalXp").textContent = state.totalXp;
+  const inLv = state.totalXp % XP_PER_LEVEL;
+  document.getElementById("xpFill").style.width = inLv + "%";
+  document.getElementById("xpText").textContent = inLv + " / " + XP_PER_LEVEL;
+  document.getElementById("streakLine").textContent = "🔥 연속 " + streak + "일";
+
+  const d = new Date();
+  const days = ["일","월","화","수","목","금","토"];
+  document.getElementById("qDate").textContent =
+    (d.getMonth()+1)+"월 "+d.getDate()+"일 ("+days[d.getDay()]+")";
+
+  renderQuests();
+  renderDex();
+  document.getElementById("board").classList.toggle("managing", managing);
+}
+
+function renderQuests(){
+  const list = document.getElementById("questList");
+  list.innerHTML = "";
+  const active = state.sentences.filter(s=>!s.mastered);
+  if(active.length === 0){
+    list.innerHTML = '<div class="empty">진행 중인 문장이 없어요!<br>+ 버튼으로 새 문장을 등록하세요.</div>';
+    return;
+  }
+  for(const s of active){
+    const el = document.createElement("div");
+    el.className = "quest" + (s._open ? " open" : "");
+    let pips = "";
+    for(let i=0;i<USES_TO_MASTER;i++){
+      pips += '<div class="pip'+(i < s.uses ? " on" : "")+'"></div>';
+    }
+    el.innerHTML =
+      '<div class="qhead">'+
+        '<div class="pips">'+pips+'</div>'+
+        '<div class="qko">'+esc(s.ko)+'</div>'+
+        '<div class="qcat">'+catOf(s.cat).icon+'</div>'+
+        '<button class="del" aria-label="삭제">X</button>'+
+      '</div>'+
+      '<div class="qbody">'+
+        langBlock(s)+
+        '<button class="usebtn">⚔ 오늘 손님에게 써먹었다! (+'+XP_USE+' EXP)</button>'+
+      '</div>';
+    el.querySelector(".qhead").addEventListener("click",(ev)=>{
+      if(ev.target.classList.contains("del")){ removeSentence(s.id); return; }
+      s._open = !s._open;
+      el.classList.toggle("open");
+    });
+    el.querySelector(".usebtn").addEventListener("click",()=>useSentence(s.id, el));
+    list.appendChild(el);
+  }
+}
+
+function renderDex(){
+  const masteredCount = state.sentences.filter(s=>s.mastered).length;
+  document.getElementById("dexStats").textContent =
+    "체화 완료 " + masteredCount + " / 전체 " + state.sentences.length;
+
+  const wrap = document.getElementById("dexList");
+  wrap.innerHTML = "";
+  for(const c of CATS){
+    const items = state.sentences.filter(s=>s.cat===c.id);
+    const done = items.filter(s=>s.mastered).length;
+    const catEl = document.createElement("div");
+    catEl.className = "dex-cat" + (state.openCats[c.id] ? " open" : "");
+    catEl.innerHTML =
+      '<div class="dex-cat-head">'+
+        '<div class="dex-icon">'+c.icon+'</div>'+
+        '<div class="dex-name">'+c.name+'</div>'+
+        '<div class="dex-count">'+done+'/'+items.length+'</div>'+
+        '<div class="dex-arrow">'+(state.openCats[c.id] ? "▲" : "▼")+'</div>'+
+      '</div>'+
+      '<div class="dex-list"></div>';
+    catEl.querySelector(".dex-cat-head").addEventListener("click", async ()=>{
+      state.openCats[c.id] = !state.openCats[c.id];
+      render();
+      await saveState();
+    });
+    const listEl = catEl.querySelector(".dex-list");
+    if(items.length === 0){
+      listEl.innerHTML = '<div class="dex-empty">아직 수집한 문장이 없어요</div>';
+    }else{
+      for(const s of items){
+        const it = document.createElement("div");
+        it.className = "dex-item";
+        it.innerHTML =
+          '<div class="dex-ko">'+esc(s.ko)+
+          (s.mastered ? '<span class="dex-badge">★체화</span>'
+                      : '<span class="dex-badge" style="color:var(--hanji-dim)">'+s.uses+'/'+USES_TO_MASTER+'</span>')+
+          '</div>'+
+          '<div class="dex-detail">'+langBlock(s)+'</div>';
+        it.addEventListener("click",()=>it.classList.toggle("open"));
+        listEl.appendChild(it);
+      }
+    }
+    wrap.appendChild(catEl);
+  }
+}
+
+/* ── 동작 ── */
+async function useSentence(id, el){
+  const s = state.sentences.find(x=>x.id===id);
+  if(!s || s.mastered) return;
+
+  const beforeLv = levelOf(state.totalXp);
+  s.uses++;
+  state.totalXp += XP_USE;
+  const tk = todayKey();
+  state.useLog[tk] = (state.useLog[tk]||0) + 1;
+
+  const f = document.createElement("div");
+  f.className = "float-xp";
+  f.textContent = "+" + XP_USE + " EXP";
+  el.appendChild(f);
+  setTimeout(()=>f.remove(), 1000);
+
+  let msg = null;
+  if(s.uses >= USES_TO_MASTER){
+    s.mastered = true;
+    s.masteredAt = tk;
+    s._open = false;
+    state.totalXp += XP_MASTER;
+    state.openCats[s.cat] = true;
+    msg = ["체화 완료!", "「"+s.ko+"」\n도감에 등록! +"+XP_MASTER+" 보너스 EXP"];
+  }
+  const afterLv = levelOf(state.totalXp);
+  if(afterLv > beforeLv){
+    msg = ["LEVEL UP!", "Lv."+afterLv+" 「"+titleOf(afterLv)+"」 달성!"];
+  }
+  if(msg) showOverlay(msg[0], msg[1]);
+
+  recalcStreak();
+  render();
+  await saveState();
+}
+
+async function removeSentence(id){
+  state.sentences = state.sentences.filter(s=>s.id!==id);
+  render();
+  await saveState();
+}
+
+function showOverlay(big, sub){
+  document.getElementById("bigMsg").textContent = big;
+  document.getElementById("subMsg").textContent = sub;
+  document.getElementById("overlay").classList.add("show");
+}
+document.getElementById("overlay").addEventListener("click", function(){
+  this.classList.remove("show");
+});
+
+/* ── 폼 ── */
+const catSel = document.getElementById("inCat");
+for(const c of CATS){
+  const o = document.createElement("option");
+  o.value = c.id; o.textContent = c.icon + " " + c.name;
+  catSel.appendChild(o);
+}
+document.getElementById("addBtn").addEventListener("click", ()=>{
+  document.getElementById("addForm").classList.toggle("open");
+  document.getElementById("inKo").focus();
+});
+document.getElementById("manageBtn").addEventListener("click", function(){
+  managing = !managing;
+  this.textContent = managing ? "완료" : "관리";
+  render();
+});
+document.getElementById("saveQuest").addEventListener("click", async ()=>{
+  const ko = document.getElementById("inKo").value.trim();
+  if(!ko) return;
+  state.sentences.push({
+    id:"s"+Date.now(),
+    cat: catSel.value,
+    ko: ko,
+    jp: document.getElementById("inJp").value.trim(),
+    jpP: document.getElementById("inJpP").value.trim(),
+    cn: document.getElementById("inCn").value.trim(),
+    cnP: document.getElementById("inCnP").value.trim(),
+    uses:0, mastered:false, masteredAt:null
+  });
+  for(const fid of ["inKo","inJp","inJpP","inCn","inCnP"]){
+    document.getElementById(fid).value = "";
+  }
+  document.getElementById("addForm").classList.remove("open");
+  render();
+  await saveState();
+});
+
+/* ── 원어민 발음 듣기 (브라우저 TTS) ── */
+let ttsVoices = [];
+function loadVoices(){
+  try{ ttsVoices = speechSynthesis.getVoices(); }catch(e){}
+}
+if("speechSynthesis" in window){
+  loadVoices();
+  speechSynthesis.onvoiceschanged = loadVoices;
+}
+function pickVoice(lang){
+  const norm = v => (v.lang||"").replace("_","-");
+  return ttsVoices.find(v => norm(v).toLowerCase() === lang.toLowerCase())
+      || ttsVoices.find(v => norm(v).toLowerCase().startsWith(lang.split("-")[0].toLowerCase()));
+}
+function speakText(text, lang, btn){
+  if(!("speechSynthesis" in window)){
+    alert("이 브라우저는 음성 재생을 지원하지 않아요");
+    return;
+  }
+  speechSynthesis.cancel();
+  document.querySelectorAll(".speak.playing").forEach(b=>b.classList.remove("playing"));
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = lang;
+  u.rate = 0.85;   // 살짝 천천히
+  const v = pickVoice(lang);
+  if(v) u.voice = v;
+  if(btn){
+    btn.classList.add("playing");
+    u.onend = ()=>btn.classList.remove("playing");
+    u.onerror = ()=>btn.classList.remove("playing");
+  }
+  speechSynthesis.speak(u);
+}
+document.addEventListener("click", (e)=>{
+  const b = e.target.closest(".speak");
+  if(!b) return;
+  e.stopPropagation();
+  speakText(b.dataset.text, b.dataset.lang, b);
+}, true);
+
+(async function init(){
+  await loadState();
+  recalcStreak();
+  render();
+})();
+</script>
+</body>
+</html>
